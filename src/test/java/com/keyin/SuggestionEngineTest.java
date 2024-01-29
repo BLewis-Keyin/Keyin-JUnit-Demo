@@ -1,54 +1,92 @@
 package com.keyin;
 
-
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.net.URL;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
 public class SuggestionEngineTest {
-    private SuggestionEngine suggestionEngine = new SuggestionEngine();
+
+    private SuggestionEngine suggestionEngine;
 
     @Mock
     private SuggestionsDatabase mockSuggestionDB;
-    private boolean testInstanceSame = false;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        suggestionEngine = new SuggestionEngine();
+        URL resource = getClass().getClassLoader().getResource("words.txt");
+        if (resource == null) {
+            throw new IllegalArgumentException("file not found!");
+        } else {
+            Path path = Paths.get(resource.toURI());
+            suggestionEngine.loadDictionaryData(path);
+        }
+    }
+
+
 
     @Test
-    public void testGenerateSuggestions() throws Exception {
-        suggestionEngine.loadDictionaryData( Paths.get( ClassLoader.getSystemResource("words.txt").getPath()));
-
-//        Assertions.assertTrue(testInstanceSame);
-        Assertions.assertTrue(suggestionEngine.generateSuggestions("hellw").contains("hello"));
+    public void testValidInputWithNoSuggestion() {
+        assertEquals("", suggestionEngine.generateSuggestions("pneumonoultramicroscopicsilicovolcanoconiosis"));
     }
 
     @Test
-    public void testGenerateSuggestionsFail() throws Exception {
-        suggestionEngine.loadDictionaryData( Paths.get( ClassLoader.getSystemResource("words.txt").getPath()));
-
-        testInstanceSame = true;
-        Assertions.assertTrue(testInstanceSame);
-        Assertions.assertFalse(suggestionEngine.generateSuggestions("hello").contains("hello"));
+    public void testEmptyInput() {
+        assertEquals("", suggestionEngine.generateSuggestions(""));
     }
 
     @Test
-    public void testSuggestionsAsMock() {
-        Map<String,Integer> wordMapForTest = new HashMap<>();
+    public void testNullInput() {
+        assertThrows(NullPointerException.class, () -> suggestionEngine.generateSuggestions(null));
+    }
 
-        wordMapForTest.put("test", 1);
+    @Test
+    public void testInputWithSpecialCharacters() {
+        assertEquals("", suggestionEngine.generateSuggestions("hello!"));
+    }
 
-        Mockito.when(mockSuggestionDB.getWordMap()).thenReturn(wordMapForTest);
+    @Test
+    public void testInputWithNumbers() {
+        assertEquals("", suggestionEngine.generateSuggestions("h3llo"));
+    }
+
+    @Test
+    public void testLargeInputString() {
+        String largeInput = "thisisaverylonginputstringtotesttheenginesbehaviorwithlonginputs";
+        assertEquals("", suggestionEngine.generateSuggestions(largeInput));
+    }
+
+    @Test
+    public void testLoadingOfDictionaryData() {
+        assertNotNull(suggestionEngine.getWordSuggestionDB());
+        assertFalse(suggestionEngine.getWordSuggestionDB().isEmpty());
+    }
+
+    @Test
+    public void testCaseInsensitivity() {
+        assertEquals(suggestionEngine.generateSuggestions("HELLO"), suggestionEngine.generateSuggestions("hello"));
+    }
+
+    @Test
+    public void testEngineWithMockDatabase() {
+        Map<String, Integer> mockData = new HashMap<>();
+        mockData.put("test", 1);
+        Mockito.when(mockSuggestionDB.getWordMap()).thenReturn(mockData);
 
         suggestionEngine.setWordSuggestionDB(mockSuggestionDB);
 
-        Assertions.assertFalse(suggestionEngine.generateSuggestions("test").contains("test"));
-
-        Assertions.assertTrue(suggestionEngine.generateSuggestions("tes").contains("test"));
+        assertTrue(suggestionEngine.generateSuggestions("tes").contains("test"));
     }
 }

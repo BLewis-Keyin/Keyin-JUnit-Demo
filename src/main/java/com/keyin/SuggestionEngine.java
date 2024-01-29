@@ -1,6 +1,7 @@
 package com.keyin;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -98,8 +99,9 @@ public class SuggestionEngine {
         }
 
         SuggestionEngine suggestionEngine = new SuggestionEngine();
-        suggestionEngine.loadDictionaryData(Paths.get( ClassLoader.getSystemResource("words.txt").getPath()));
+        URI uri = ClassLoader.getSystemResource("words.txt").toURI();
+        Path path = Paths.get(uri);
 
-        System.out.println(suggestionEngine.generateSuggestions(args[0]));
+        suggestionEngine.loadDictionaryData(path);
     }
 }
